@@ -1,0 +1,1047 @@
+---
+title: "Male Neuroplasticity Study: Brain Structure Volume Analysis for Male Bombus Brains"
+author: "M.A. Hagadorn"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output:
+  pdf_document:
+    toc: true
+    toc_depth: 2
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	warning = TRUE,
+	background = "#F7F7F7",
+	highlight = TRUE)
+```
+
+***
+                  
+                           
+```{r packages, echo=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(plyr)
+library(dplyr)
+library(Rmisc)
+library(ggplot2)
+library(car)
+library(stats)
+library(nortest)
+library(MASS)
+
+installed.packages()[names(sessionInfo()$otherPkgs), "Version"]
+```
+\newpage
+
+
+```{r loaddata, include=FALSE}
+#read in data
+KE_maleNP <- read.csv2("Data/Bimpatiens_MNP_StructureVolumes.csv", sep=",", stringsAsFactors = FALSE)
+
+
+
+#remove extra rows
+KE_maleNP <- KE_maleNP[1:18,] #make sure no extra rows
+print(str(KE_maleNP))
+
+KE_maleNP <- KE_maleNP[,-c(9:10,17:24)] #remove total columns KE had; remove proportions already calculated by KE
+#Calculations will be done below to ensure repeatability and to remain consistent across data sets
+```
+
+```{r DATASTUFF, echo=FALSE}
+#Make TX a factor
+KE_maleNP$treatment <- factor(KE_maleNP$treatment, levels = c("NE", "AGED"))
+
+#make proportions type numeric
+KE_maleNP$mb_lobe<- as.numeric(KE_maleNP$mb_lobe) #MBLobe
+KE_maleNP$antennal_lobe <- as.numeric(KE_maleNP$antennal_lobe) #AL
+KE_maleNP$lateral_kenyoncells <- as.numeric(KE_maleNP$lateral_kenyoncells) #Lateral KC
+KE_maleNP$medial_kenyoncells <- as.numeric(KE_maleNP$medial_kenyoncells) #medial KC
+KE_maleNP$lateral_calyx <- as.numeric(KE_maleNP$lateral_calyx) #lateralcalyx
+KE_maleNP$medial_calyx <- as.numeric(KE_maleNP$medial_calyx) #medialcalyx
+
+#wholebrain
+KE_maleNP$whole_brain <- as.numeric(KE_maleNP$whole_brain) #whole brain
+
+print(str(KE_maleNP))
+
+#Reordering formatting
+NE <- subset(KE_maleNP, treatment=='NE')
+AGED <- subset(KE_maleNP, treatment=='AGED')
+
+KE_NPdata <- rbind(NE,AGED)
+```
+
+
+\section{Check for duplicate values}
+```{r duplicatevalues}
+anyDuplicated(KE_NPdata[,8:14])
+#no duplicate values
+```
+
+
+
+
+\section{Combine Lateral and Medial Measurements for Select Structures}
+\subsection{Summing Measurements}
+Before analyzing the data we need to sum medial and lateral measurements to get one value for each structure (i.e. ```lateral_calyx + medial_calyx``` to get one value for the calyces.)
+
+The table below summarizes how the values were summed and their new naming code.
+\subsection{Record of what data are being summed}
+```{r collapsedtable, echo=FALSE}
+#library(knitr)
+sumstructures <- c("calyces","mushroom body lobe", "kenyon cells", "neuropil")
+
+sumstructcode <- c("calyces", "mblobe", "kcs", "neuropil")
+
+collapsed_structures <- c( "lateral_calyx  +  medial_calyx", "mblobe", "lateral_kc  +  medial_kc", "sum all neuropil for N:K")
+sum_data_table <- cbind(sumstructures, sumstructcode, collapsed_structures)
+colnms <- c("Summed Structures", "Name", "Individual Structures Collapsed")
+kable(sum_data_table, col.names = colnms, align=c('l', 'l', 'l'), caption = "Information for specific structures that were summed to make 'combined' structures")
+```
+
+
+\subsection{Summing the data}
+Below is an example of how data are summed across lateral and medial structures.
+```{r example, eval=FALSE, echo=TRUE}
+calyx <- apply(data[,c("lateral_calyx", "medial_calyx")], 1, sum)
+```
+
+
+```{r combinedata, echo=FALSE}
+#to sum the calyces 
+calyces <- apply(KE_NPdata[,c("lateral_calyx","medial_calyx")], 1, sum)
+
+#to sum the kenyon cells 
+kcs <- apply(KE_NPdata[,c("lateral_kenyoncells", "medial_kenyoncells")], 1, sum)
+
+#to sum the neuropil 
+neuropil <- apply(KE_NPdata[,c("lateral_calyx", "medial_calyx", "mb_lobe")], 1, sum)
+
+#bind to create new dataframe containing these columns
+Bimp_maleNP_plussumdata <- cbind(KE_NPdata, calyces, kcs, neuropil)
+```
+
+
+```{r sumstructure, echo=FALSE}
+#Save summed data
+write.csv(Bimp_maleNP_plussumdata, "Data/Bimp_MNP_plussummeddata.csv")
+```
+
+
+\section{Summed Structures Scaled Relative to Whole Brain}
+Structures that were summed in the prior step are now made ratios of whole brain measurements.
+
+\subsection{Make New Table: Containing Summed Structures}
+```{r mk_tableonlysummedstructures}
+#make a new table with only the factors and the data we want to take whole brain proportions of...
+Bimp_maleNP_sumdata <- Bimp_maleNP_plussumdata[,-c(9:12)]
+```
+
+\subsection{Scale to whole brain}
+```{r relativetoWB}
+#calculate relative to wholebrain
+#using mutate we can add the calculated column to our dataframe
+
+#library(dplyr)
+#relative to Whole brain
+Bimp_maleNP_sumdata <- mutate(Bimp_maleNP_sumdata, calyces_relWB = calyces/whole_brain) # calyces
+Bimp_maleNP_sumdata <- mutate(Bimp_maleNP_sumdata, mblobe_relWB = mb_lobe/whole_brain) # mblobes
+Bimp_maleNP_sumdata <- mutate(Bimp_maleNP_sumdata, kcs_relWB = kcs/whole_brain) # kcs
+Bimp_maleNP_sumdata <- mutate(Bimp_maleNP_sumdata, neuropil_relWB = neuropil/whole_brain) # neuropil
+
+#N:K
+Bimp_maleNP_sumdata <- mutate(Bimp_maleNP_sumdata, nk = neuropil/kcs) # N:K
+
+#relative to KCS
+Bimp_maleNP_sumdata <- mutate(Bimp_maleNP_sumdata, calyces_relKC = calyces/kcs) # calyces
+Bimp_maleNP_sumdata <- mutate(Bimp_maleNP_sumdata, mblobe_relKC = mb_lobe/kcs) # mblobes
+```
+
+
+
+```{r saveprop, echo=FALSE}
+#Save Prop Data
+write.csv(Bimp_maleNP_sumdata, "Data/Bimp_MNP_proportiondata.csv")
+
+```
+
+
+\subsection{Make New Table: just the proportion data}
+```{r mk_propdata}
+#make a new table with only the factors whole brain proportion data
+KE_NPdata <- Bimp_maleNP_sumdata[,-c(8:9,11,13)] #KEEP raw Wholebrain and KCS for t-test
+```
+
+
+
+
+\section{Whole Brain t-Test}
+\subsection{Summary statistics}
+```{r ss_wb, echo=FALSE}
+#library(Rmisc)
+summarystats_wb <- summarySE(KE_NPdata,
+                                 measurevar = "whole_brain",
+                                 groupvars = c("treatment"))
+
+
+kable(summarystats_wb)
+```
+
+
+```{r bp_wb, echo=FALSE}
+#outlier function
+is_outlier <- function(x){
+  return(x < quantile(x, 0.25)-1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+}
+
+samples_KE_NPdata<- KE_NPdata[,-1]
+rownames(samples_KE_NPdata) <- KE_NPdata[,1]
+
+outlier_test_whole_brain <- samples_KE_NPdata %>% tibble::rownames_to_column(var="outlier") %>% group_by(treatment) %>% mutate(is_outlier=ifelse(is_outlier(whole_brain), whole_brain, as.numeric(NA)))
+
+outlier_test_whole_brain$outlier[which(is.na(outlier_test_whole_brain$is_outlier))] <- as.numeric(NA)
+
+
+
+
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=whole_brain, fill=treatment)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("Whole Brain") +
+  annotate("text", x=2, y=175000000, label="K18R.m017", size=4, col="red") +
+  scale_y_continuous(name = "Volume", limits = c(90000000,190000000)) +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+```
+
+
+\subsection{T-test}
+```{r t-test_wb, include=TRUE}
+tt_wb <- t.test(whole_brain ~ treatment, data = KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_wb)
+
+tt_wb$statistic
+sprintf("%.10f", tt_wb$p.value)
+
+
+#Calculate percent increase between means
+p.inc <- function(meanAged,meanNE){
+ return((meanAged-meanNE)/(meanNE) * 100)
+}
+
+#calculate % increase
+wb_PI <- (p.inc(tt_wb$estimate[[2]], tt_wb$estimate[[1]]))
+wb_PI
+
+```
+
+
+Whole brain mean volume of AGED males (`r tt_wb$estimate[[2]]`) is `r round(wb_PI,2)`% greater than NE males (`r tt_wb$estimate[[1]]`).
+
+
+
+\subsection{Checking for Normality and Homogeneity of Variance}
+```{r testassumption_wb}
+qqPlot(KE_NPdata$whole_brain, "norm")
+print(ad.test(KE_NPdata$whole_brain))
+print(leveneTest(whole_brain~treatment, data = KE_NPdata))
+```
+
+
+
+
+
+\section{Kenyon cells t-Test}
+\subsection{Summary statistics}
+```{r ss_kcsraw, echo=FALSE}
+#library(Rmisc)
+summarystats_kcsraw <- summarySE(KE_NPdata,
+                                 measurevar = "kcs",
+                                 groupvars = c("treatment"))
+
+
+kable(summarystats_kcsraw)
+```
+
+
+```{r bp_kcsraw, echo=FALSE}
+outlier_test_kcsraw <- samples_KE_NPdata %>% tibble::rownames_to_column(var="outlier") %>% group_by(treatment) %>% mutate(is_outlier=ifelse(is_outlier(kcs), kcs, as.numeric(NA)))
+
+outlier_test_kcsraw$outlier[which(is.na(outlier_test_kcsraw$is_outlier))] <- as.numeric(NA)
+
+
+
+
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=kcs, fill=treatment)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("Kenyon Cells: Not standardized") +
+  scale_y_continuous(name = "Volume", limits = c(3000000,12000000)) +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+```
+
+
+\subsection{T-test}
+```{r t-test_kcsraw, include=TRUE}
+tt_kcsraw <- t.test(kcs ~ treatment, data = KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_kcsraw)
+
+tt_kcsraw$statistic
+sprintf("%.10f", tt_kcsraw$p.value)
+```
+
+
+\subsection{Checking for Normality and Homogeneity of Variance}
+```{r testassumption_kcsraw}
+qqPlot(KE_NPdata$kcs, "norm")
+print(ad.test(KE_NPdata$kcs))
+print(leveneTest(kcs~treatment, data = KE_NPdata))
+```
+
+
+
+
+
+
+
+
+
+\section{Data Anaylsis: T-tests comparing relative volumes (whole brain) of brain structures between Newly-Emerged and Aged bees}
+
+\subsection{Calyces: lip, collar, basal ring}
+\subsubsection{Summary statistics}
+```{r ss_calyce, echo=FALSE}
+#library(Rmisc)
+summarystats_calyces <- summarySE(KE_NPdata,
+                                 measurevar = "calyces_relWB",
+                                 groupvars = c("treatment"))
+
+
+kable(summarystats_calyces)
+```
+
+
+
+```{r bp_cal, echo=FALSE}
+outlier_test_calyces <- samples_KE_NPdata %>% tibble::rownames_to_column(var="outlier") %>% group_by(treatment) %>% mutate(is_outlier=ifelse(is_outlier(calyces_relWB), calyces_relWB, as.numeric(NA)))
+
+outlier_test_calyces$outlier[which(is.na(outlier_test_calyces$is_outlier))] <- as.numeric(NA)
+
+
+
+
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=calyces_relWB, fill=treatment)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("Calyces") +
+  annotate("text", x=1, y=0.085, label="K18R.m010", size=4, col="red") +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+```
+
+
+\subsubsection{T-test}
+```{r t-test_cal, include=TRUE}
+tt_calyces <- t.test(calyces_relWB~treatment, data=KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_calyces)
+
+tt_calyces$statistic
+sprintf("%.10f", tt_calyces$p.value)
+
+
+#calculate % increase
+cal_PI <- (p.inc(tt_calyces$estimate[[2]], tt_calyces$estimate[[1]]))
+cal_PI
+```
+
+Calyx mean volume of AGED males (`r tt_calyces$estimate[[2]]`) is `r round(cal_PI,2)`% greater than NE males (`r tt_calyces$estimate[[1]]`).
+
+
+\subsubsection{Checking for Normality and Homogeneity of Variance}
+```{r t-test_assump}
+qqPlot(KE_NPdata$calyces_relWB, "norm")
+print(ad.test(KE_NPdata$calyces_relWB))
+print(leveneTest(calyces_relWB~treatment, data = KE_NPdata))
+```
+
+Normal based on Q-Q plot but not the other tests. So, going to box cox transform.
+
+
+\subsubsection{Box-Cox Transformation}
+```{r BoxCox_calyces, echo=TRUE, eval=TRUE, fig.height=3.5}
+##Box-Cox Transformation
+bc_calyces <- boxcox(calyces_relWB ~ treatment, 
+                       data = KE_NPdata, lambda= seq(-20, 14, length=100), plotit = TRUE)
+
+#get lambda
+lambda_calyces <- bc_calyces$x
+#get log-likelyhood
+likelyhood_calyces <- bc_calyces$y
+
+bcresults_calyces <- cbind(lambda_calyces, likelyhood_calyces)
+
+#sort these in decending order
+ord_bc_calyces <-bcresults_calyces[order(-likelyhood_calyces),]
+
+#pull out maximum likelyhood and corresponding lambda
+max_lik_calyces<- ord_bc_calyces[1,]
+#lambda_calyces likelyhood_calyces
+
+new.lambda_calyces <- ord_bc_calyces[1,1]
+```
+
+Using the ```boxcox()``` function from the package ```MASS```, we determined that $\lambda$ =  `r new.lambda_calyces`.
+
+
+
+\subsubsection{Box-cox transformation model}
+```{r transformed_calycesboxcoxtt}
+box_ttest_calyces <- t.test((((KE_NPdata$calyces_relWB ^ 
+                new.lambda_calyces)-1)/new.lambda_calyces)~treatment, 
+                data=KE_NPdata, alternative=c("two.sided"), paired=FALSE, 
+                var.equal=TRUE)
+  
+print(box_ttest_calyces)
+
+#get full for MS
+box_ttest_calyces$statistic
+sprintf("%.10f", box_ttest_calyces$p.value)
+
+
+
+cal_bc_PI <- (p.inc(box_ttest_calyces$estimate[[2]], box_ttest_calyces$estimate[[1]]))
+cal_bc_PI
+```
+
+Calyx mean volume of AGED males (`r box_ttest_calyces$estimate[[2]]`) is `r round(cal_bc_PI,2)`% greater than NE males (`r box_ttest_calyces$estimate[[1]]`).
+
+
+\subsubsection{Retest Assumptions}
+```{r transformed_assumptions, echo=FALSE}
+qqPlot((((KE_NPdata$calyces_relWB ^ 
+                new.lambda_calyces)-1)/new.lambda_calyces), "norm")
+
+
+print(ad.test((((KE_NPdata$calyces_relWB ^ 
+                new.lambda_calyces)-1)/new.lambda_calyces)))
+
+print(leveneTest((((KE_NPdata$calyces_relWB ^ 
+                new.lambda_calyces)-1)/new.lambda_calyces) ~ treatment, 
+                          data = KE_NPdata))
+```
+
+
+
+
+
+\subsection{Kenyon Cells: Total Kenyon Cell}
+\subsubsection{summary statistics}
+```{r ss_kc, echo=FALSE}
+#library(Rmisc)
+summarystats_kc <- summarySE(KE_NPdata,
+                             measurevar = "kcs_relWB",
+                             groupvars = c("treatment"))
+
+
+kable(summarystats_kc)
+
+```
+
+```{r bp_kc, echo=FALSE}
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=kcs_relWB, fill=treatment)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("Kenyon cells") +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+```
+
+
+\subsubsection{T-test}
+```{r t-test_kc}
+tt_kcs <- t.test(kcs_relWB~treatment, data=KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_kcs)
+
+tt_kcs$statistic
+sprintf("%.10f", tt_kcs$p.value)
+
+```
+
+
+
+
+\subsubsection{Checking for Normality and Homogeneity of Variance}
+```{r t-test_assump_kc}
+qqPlot(KE_NPdata$kcs_relWB, "norm")
+print(ad.test(KE_NPdata$kcs_relWB))
+print(leveneTest(kcs_relWB~treatment, data = KE_NPdata))
+```
+
+
+
+\subsubsection{Box-Cox Transformation}
+```{r BoxCox_kcs, echo=TRUE, eval=TRUE, fig.height=3.5}
+##Box-Cox Transformation
+bc_kcs <- boxcox(kcs_relWB ~ treatment, 
+                       data = KE_NPdata, lambda= seq(-25, 14, length=100), plotit = TRUE)
+
+#get lambda
+lambda_kcs <- bc_kcs$x
+#get log-likelyhood
+likelyhood_kcs <- bc_kcs$y
+
+bcresults_kcs <- cbind(lambda_kcs, likelyhood_kcs)
+
+#sort these in decending order
+ord_bc_kcs <-bcresults_kcs[order(-likelyhood_kcs),]
+
+#pull out maximum likelyhood and corresponding lambda
+max_lik_kcs <- ord_bc_kcs[1,]
+#lambda_kcs likelyhood_kcs 
+
+new.lambda_kcs <- ord_bc_kcs[1,1]
+```
+
+Using the ```boxcox()``` function from the package ```MASS```, we determined that $\lambda$ =  `r new.lambda_kcs`.
+
+
+
+\subsubsection{Box-cox transformation model}
+```{r transformed_kcsboxcoxtt}
+box_ttest_kcs <- t.test((((KE_NPdata$kcs_relWB ^ 
+                new.lambda_kcs)-1)/new.lambda_kcs) ~ treatment, 
+                data=KE_NPdata, alternative=c("two.sided"), paired=FALSE, 
+                var.equal=TRUE)
+  
+print(box_ttest_kcs)
+
+#get full for MS
+box_ttest_kcs$statistic
+sprintf("%.10f", box_ttest_kcs$p.value)
+
+```
+
+
+
+\subsubsection{Retest Assumptions}
+```{r transformed_assumptions_KC, echo=FALSE}
+qqPlot((((KE_NPdata$kcs_relWB ^ 
+                new.lambda_kcs)-1)/new.lambda_kcs), "norm")
+
+
+print(ad.test((((KE_NPdata$kcs_relWB ^ 
+                new.lambda_kcs)-1)/new.lambda_kcs)))
+
+print(leveneTest((((KE_NPdata$kcs_relWB ^ 
+                new.lambda_kcs)-1)/new.lambda_kcs) ~ treatment, 
+                          data = KE_NPdata))
+```
+
+
+
+
+
+
+
+
+
+
+\subsection{Mushroom Body Lobes: Including Peduncle and Sensory Lobes}
+\subsubsection{summary statistics}
+```{r ss_mblobe, echo=FALSE}
+#library(Rmisc)
+summarystats_mblobe <- summarySE(KE_NPdata,
+                                 measurevar = "mblobe_relWB",
+                                 groupvars = c("treatment"))
+
+kable(summarystats_mblobe)
+
+```
+
+
+```{r bp_mblobe, echo=FALSE}
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=mblobe_relWB, fill=treatment)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("Mushroom Body Lobes") +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+```
+
+
+\subsubsection{T-test}
+```{r t-test_mblobe, include=TRUE}
+tt_mblobe <- t.test(mblobe_relWB~treatment, data=KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_mblobe)
+
+tt_mblobe$statistic
+sprintf("%.10f", tt_mblobe$p.value)
+```
+
+
+
+\subsubsection{Checking for Normality and Homogeneity of Variance}
+```{r t-test_assump_mblobe}
+qqPlot(KE_NPdata$mblobe_relWB, "norm")
+print(ad.test(KE_NPdata$mblobe_relWB))
+print(leveneTest(mblobe_relWB~treatment, data = KE_NPdata))
+```
+
+
+
+
+
+
+\subsection{Neuropil}
+\subsubsection{summary statistics}
+```{r ss_N, echo=FALSE}
+#library(Rmisc)
+summarystats_N <- summarySE(KE_NPdata,
+                                 measurevar = "neuropil_relWB",
+                                 groupvars = c("treatment"))
+
+kable(summarystats_N)
+```
+
+```{r bp_N, echo=FALSE}
+
+outlier_test_neuropil <- samples_KE_NPdata %>% tibble::rownames_to_column(var="outlier") %>% group_by(treatment) %>% mutate(is_outlier=ifelse(is_outlier(neuropil_relWB), neuropil_relWB, as.numeric(NA)))
+
+outlier_test_neuropil$outlier[which(is.na(outlier_test_neuropil$is_outlier))] <- as.numeric(NA)
+
+
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=neuropil_relWB, fill=treatment)) +
+  geom_boxplot() +
+  annotate("text", x=1, y=0.1335, label="K18R.m010", size=4, col="red") +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("MB Neuropil") +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+
+```
+
+\subsubsection{T-test}
+```{r t-test_N, include=TRUE}
+
+tt_neuropil <- t.test(neuropil_relWB~treatment, data=KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_neuropil)
+
+tt_neuropil$statistic
+sprintf("%.10f", tt_neuropil$p.value)
+
+
+#% increase
+neuropil_PI <- (p.inc(tt_neuropil$estimate[[2]], tt_neuropil$estimate[[1]]))
+neuropil_PI
+```
+
+Neuropil mean volume of AGED males (`r tt_neuropil$estimate[[2]]`) is `r round(neuropil_PI,2)`% greater than NE males (`r tt_neuropil$estimate[[1]]`).
+
+
+
+
+\subsubsection{Checking for Normality and Homogeneity of Variance}
+```{r t-test_assump_N}
+qqPlot(KE_NPdata$neuropil_relWB, "norm")
+print(ad.test(KE_NPdata$neuropil_relWB))
+print(leveneTest(neuropil_relWB~treatment, data = KE_NPdata))
+```
+
+
+
+
+
+
+
+\subsection{N:K}
+\subsubsection{summary statistics}
+```{r ss_nk, echo=FALSE}
+#library(Rmisc)
+summarystats_nk <- summarySE(KE_NPdata,
+                                 measurevar = "nk",
+                                 groupvars = c("treatment"))
+
+kable(summarystats_nk)
+```
+
+```{r bp_nk, echo=FALSE}
+
+outlier_test_nk <- samples_KE_NPdata %>% tibble::rownames_to_column(var="outlier") %>% group_by(treatment) %>% mutate(is_outlier=ifelse(is_outlier(nk), nk, as.numeric(NA)))
+
+outlier_test_nk$outlier[which(is.na(outlier_test_nk$is_outlier))] <- as.numeric(NA)
+
+
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=nk, fill=treatment)) +
+  geom_boxplot() +
+  annotate("text", x=2, y=2.9, label="K18P.m003", size=4, col="red") +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("N:K") +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+
+```
+
+\subsubsection{T-test}
+```{r t-test_nk, include=TRUE}
+tt_nk <- t.test(nk~treatment, data=KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_nk)
+
+tt_nk$statistic
+sprintf("%.10f", tt_nk$p.value)
+
+#% increase
+nk_PI <- (p.inc(tt_nk$estimate[[2]], tt_nk$estimate[[1]]))
+nk_PI
+```
+
+NK mean of AGED males (`r tt_nk$estimate[[2]]`) is `r round(nk_PI,2)`% greater than NE males (`r tt_nk$estimate[[1]]`).
+
+
+
+\subsubsection{Checking for Normality and Homogeneity of Variance}
+```{r t-test_assump_nk}
+qqPlot(KE_NPdata$nk, "norm")
+print(ad.test(KE_NPdata$nk))
+print(leveneTest(nk~treatment, data = KE_NPdata))
+```
+
+
+
+
+
+
+
+
+
+
+
+\section{Data Anaylsis: Relative Volumes (Kenyon cells) Between Newly-Emerged and Aged bees}
+\subsection{Calyces: lip, collar, basal ring}
+\subsubsection{Summary Statistics}
+```{r meansum_calyx_byKC, echo=FALSE}
+#library(Rmisc)
+kable(summarySE(KE_NPdata,
+                          measurevar = "calyces_relKC",
+                          groupvars = c("treatment")))
+```
+
+
+```{r outlier_calyx_byKC, echo=FALSE}
+outlier_test_calyces_relKC <- samples_KE_NPdata %>% tibble::rownames_to_column(var="outlier") %>% group_by(treatment) %>% mutate(is_outlier=ifelse(is_outlier(calyces_relKC), calyces_relKC, as.numeric(NA)))
+
+outlier_test_calyces_relKC$outlier[which(is.na(outlier_test_calyces_relKC$is_outlier))] <- as.numeric(NA)
+
+
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=calyces_relKC, fill=treatment)) +
+  geom_boxplot() +
+  annotate("text", x=2, y=1.8, label="K18P.m003", size=4, col="red") +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("Calyces") +
+  scale_y_continuous(name = "Volume Relative to Kenyon Cell Bodies", limits = c(1,2)) +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+```
+
+
+
+\subsubsection{T-test}
+```{r tt_calyx_byKC}
+tt_calyces_byKC <- t.test(calyces_relKC~treatment, data=KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_calyces_byKC)
+
+tt_calyces_byKC$statistic
+sprintf("%.10f", tt_calyces_byKC$p.value)
+
+#% increase
+calyces_byKC_PI <- (p.inc(tt_calyces_byKC$estimate[[2]], tt_calyces_byKC$estimate[[1]]))
+calyces_byKC_PI
+```
+
+Calyces:KC mean volume of AGED males (`r tt_calyces_byKC$estimate[[2]]`) is `r round(calyces_byKC_PI,2)`% greater than NE males (`r tt_calyces_byKC$estimate[[1]]`).
+
+
+\subsubsection{Verifying Assumptions}
+Checking for:
+<br />  
+1) The data are normally distributed
+<br />  
+2) Homogeneity of Variance
+
+```{r assumptions_calyx_byKC, echo=FALSE}
+qqPlot(KE_NPdata$calyces_relKC, "norm")
+print(ad.test(KE_NPdata$calyces_relKC))
+print(leveneTest(calyces_relKC~treatment, data=KE_NPdata))
+```
+
+Normality: Assumption met.
+<br />  
+Variance: Assumption met.
+
+
+
+
+\subsection{Mushroom Body Lobes}
+\subsubsection{Summary Statistics}
+```{r meansum_mblobe_byKC, echo=FALSE}
+#library(Rmisc)
+kable(summarySE(KE_NPdata,
+                          measurevar = "mblobe_relKC",
+                          groupvars = c("treatment")))
+```
+
+
+```{r bp_mblobe_byKC, echo=FALSE}
+#Boxplot
+ggplot(KE_NPdata, aes(x=treatment, y=mblobe_relKC, fill=treatment)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("darkgoldenrod1", "cyan3")) +
+  ggtitle("Mushroom Body Lobes") +
+  scale_y_continuous(name = "Volume Relative to Kenyon Cells", limits = c(0.3,1)) +
+  scale_x_discrete(name = "Treatment Group", labels = c("NE", "AGED")) +
+  theme(text = element_text(color="black",size = 15),
+        axis.title = element_text(color="black"), 
+        axis.text.x = element_text(color="black", size = 15, margin = margin(t = 5, r =0, b = 20, l = 0)), 
+        axis.text.y = element_text(color="black", size = 15, margin = margin(t = 0, r =5, b = 0, l = 20)),
+        axis.ticks.length = unit (.5,"cm"),
+        legend.position = 'none', 
+        legend.background = element_blank(),
+        legend.title = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        panel.border = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        axis.line = element_line(size = 1, linetype = "solid",colour = "black"),
+        plot.title = element_text(hjust=0.5))
+```
+
+
+
+\subsubsection{T-test}
+```{r tt_mblobe_byKC}
+tt_mblobe_byKC <- t.test(mblobe_relKC~treatment, data=KE_NPdata, 
+                     alternative=c("two.sided"), paired=FALSE, var.equal=TRUE)
+
+print(tt_mblobe_byKC)
+
+tt_mblobe_byKC$statistic
+sprintf("%.10f", tt_mblobe_byKC$p.value)
+
+
+
+#% increase
+mblobe_byKC_PI <- (p.inc(tt_mblobe_byKC$estimate[[2]], tt_mblobe_byKC$estimate[[1]]))
+mblobe_byKC_PI
+```
+
+MB Lobe:KC mean volume of AGED males (`r tt_mblobe_byKC$estimate[[2]]`) is `r round(mblobe_byKC_PI,2)`% greater than NE males (`r tt_mblobe_byKC$estimate[[1]]`).
+
+\subsubsection{Verifying Assumptions}
+Checking for:
+<br />  
+1) The data are normally distributed
+<br />  
+2) Homogeneity of Variance
+
+```{r assumptions_mblobe_byKC, echo=FALSE}
+qqPlot(KE_NPdata$mblobe_relKC, "norm")
+
+#normality
+print(ad.test(KE_NPdata$mblobe_relKC))
+
+#variance
+print(leveneTest(mblobe_relKC~treatment, data=KE_NPdata))
+```
+
+Normality: Assumption met.
+<br />  
+Variance: Assumption met.
+
+
+
+
+
+
+
+
+
+\newpage
+\section{Summary Table of the Results}
+```{r summarizeallresults, echo=FALSE}
+structure <- c("Calyces", "Mushroom Body Lobe", "Kenyon Cells", "Neuropil", "NK")
+
+ne_mean <- c(tt_calyces$estimate[1], tt_mblobe$estimate[1], tt_kcs$estimate[1], 
+             tt_neuropil$estimate[1], tt_nk$estimate[1])
+
+aged_mean <- c(tt_calyces$estimate[2], tt_mblobe$estimate[2], tt_kcs$estimate[2], 
+               tt_neuropil$estimate[2], tt_nk$estimate[2])
+  
+CI_lower <- c(tt_calyces$conf.int[1], tt_mblobe$conf.int[1], tt_kcs$conf.int[1],
+              tt_neuropil$estimate[1],tt_nk$conf.int[1])
+  
+CI_upper <- c(tt_calyces$conf.int[2], tt_mblobe$conf.int[2], tt_kcs$conf.int[2],
+              tt_neuropil$estimate[2],tt_nk$conf.int[2])
+
+p_value <-c(tt_calyces$p.value, tt_mblobe$p.value, tt_kcs$p.value, 
+            tt_neuropil$p.value, tt_nk$p.value)
+
+
+
+summary <-cbind(structure, signif(ne_mean, 3), signif(aged_mean, 3), signif(CI_lower, 3), signif(CI_upper, 3), signif(p_value,4))
+  
+
+kable(summary, row.names = FALSE, col.names = c("Structure", "NE means", "Aged means", "Lower 95% CI", "Upper 95% CI", "p-Value"), caption = "Results when scaled by whole brain volumes.")
+```
+
+\section{Summary Table of the Results}
+```{r summarizeallresults_KCrelative, echo=FALSE}
+structure_byKC <- c("Calyces", "Mushroom Body Lobe")
+
+ne_mean_byKC <- c(tt_calyces_byKC$estimate[1], tt_mblobe_byKC$estimate[1])
+
+aged_mean_byKC <- c(tt_calyces_byKC$estimate[2], tt_mblobe_byKC$estimate[2])
+  
+CI_lower_byKC <- c(tt_calyces_byKC$conf.int[1], tt_mblobe_byKC$conf.int[1])
+  
+CI_upper_byKC <- c(tt_calyces_byKC$conf.int[2], tt_mblobe_byKC$conf.int[2])
+
+p_value_byKC <-c(tt_calyces_byKC$p.value, tt_mblobe_byKC$p.value)
+
+
+
+summary <-cbind(structure_byKC, signif(ne_mean_byKC, 3), signif(aged_mean_byKC, 3), signif(CI_lower_byKC, 3), signif(CI_upper_byKC, 3), signif(p_value_byKC,4))
+  
+
+kable(summary, row.names = FALSE, col.names = c("Structure", "NE means", "Aged means", "Lower 95% CI", "Upper 95% CI", "p-Value"), caption = "Results for MB neuropil when scaled by Kenyon cell volumes.")
+```
+
+
