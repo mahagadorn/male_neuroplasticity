@@ -28,6 +28,7 @@ library(car)
 library(stats)
 library(nortest)
 library(MASS)
+library(here)
 
 installed.packages()[names(sessionInfo()$otherPkgs), "Version"]
 ```
@@ -36,16 +37,11 @@ installed.packages()[names(sessionInfo()$otherPkgs), "Version"]
 
 ```{r loaddata, include=FALSE}
 #read in data
-KE_maleNP <- read.csv2("Data/Bimpatiens_MNP_StructureVolumes.csv", sep=",", stringsAsFactors = FALSE)
-
-
+KE_maleNP <- read.csv2(here("../../Data/Bimpatiens_MNP_StructureVolumes.csv"), sep=",", stringsAsFactors = FALSE)
 
 #remove extra rows
 KE_maleNP <- KE_maleNP[1:18,] #make sure no extra rows
 print(str(KE_maleNP))
-
-KE_maleNP <- KE_maleNP[,-c(9:10,17:24)] #remove total columns KE had; remove proportions already calculated by KE
-#Calculations will be done below to ensure repeatability and to remain consistent across data sets
 ```
 
 ```{r DATASTUFF, echo=FALSE}
@@ -125,7 +121,7 @@ Bimp_maleNP_plussumdata <- cbind(KE_NPdata, calyces, kcs, neuropil)
 
 ```{r sumstructure, echo=FALSE}
 #Save summed data
-write.csv(Bimp_maleNP_plussumdata, "Data/Bimp_MNP_plussummeddata.csv")
+write.csv(Bimp_maleNP_plussumdata, "../../Data/Bimp_MNP_plussummeddata.csv")
 ```
 
 
@@ -162,7 +158,7 @@ Bimp_maleNP_sumdata <- mutate(Bimp_maleNP_sumdata, mblobe_relKC = mb_lobe/kcs) #
 
 ```{r saveprop, echo=FALSE}
 #Save Prop Data
-write.csv(Bimp_maleNP_sumdata, "Data/Bimp_MNP_proportiondata.csv")
+write.csv(Bimp_maleNP_sumdata, "../../Data/Bimp_MNP_proportiondata.csv")
 
 ```
 
@@ -1006,10 +1002,10 @@ aged_mean <- c(tt_calyces$estimate[2], tt_mblobe$estimate[2], tt_kcs$estimate[2]
                tt_neuropil$estimate[2], tt_nk$estimate[2])
   
 CI_lower <- c(tt_calyces$conf.int[1], tt_mblobe$conf.int[1], tt_kcs$conf.int[1],
-              tt_neuropil$estimate[1],tt_nk$conf.int[1])
+              tt_neuropil$conf.int[1],tt_nk$conf.int[1])
   
 CI_upper <- c(tt_calyces$conf.int[2], tt_mblobe$conf.int[2], tt_kcs$conf.int[2],
-              tt_neuropil$estimate[2],tt_nk$conf.int[2])
+              tt_neuropil$conf.int[2],tt_nk$conf.int[2])
 
 p_value <-c(tt_calyces$p.value, tt_mblobe$p.value, tt_kcs$p.value, 
             tt_neuropil$p.value, tt_nk$p.value)

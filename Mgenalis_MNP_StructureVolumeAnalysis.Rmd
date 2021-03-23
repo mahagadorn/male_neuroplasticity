@@ -28,6 +28,7 @@ library(ggplot2)
 library(car)
 library(stats)
 library(nortest)
+library(here)
 
 installed.packages()[names(sessionInfo()$otherPkgs), "Version"]
 ```
@@ -38,7 +39,7 @@ installed.packages()[names(sessionInfo()$otherPkgs), "Version"]
 \section{Load in Data and assign Factors/Numeric}
 ```{r loaddata, include=FALSE}
 #read in data
-Mgen_maleNP <- read.csv2("Data/Mgenalis_MNP_StructureVolumes.csv", sep=",", stringsAsFactors = FALSE)
+Mgen_maleNP <- read.csv2(here("../../Data/Mgenalis_MNP_StructureVolumes.csv"), sep=",", stringsAsFactors = FALSE)
 ```
 
 ```{r DATASTUFF, echo=FALSE}
@@ -109,7 +110,7 @@ Mgen_maleNP_plussumdata <- cbind(Mgen_maleNP, calyces, kcs, neuropil)
 ```
 
 ```{r sumstructure, echo=FALSE}
-write.csv(Mgen_maleNP_plussumdata, "Data/Mgenalis_MNP_plussummeddata.csv")
+write.csv(Mgen_maleNP_plussumdata, "../../Data/Mgenalis_MNP_plussummeddata.csv")
 ```
 
 
@@ -122,7 +123,7 @@ Structures that were summed in the prior step are now made ratios of whole brain
 \subsubsection{Make New Table: Containing Summed Structures}
 ```{r mk_tableonlysummedstructures, echo=FALSE}
 #make a new table with only the factors and the data we want to take whole brain proportions of...
-Mgen_maleNP_sumdata <- Mgen_maleNP_plussumdata[,-c(13)] #remove notes
+Mgen_maleNP_sumdata <- Mgen_maleNP_plussumdata[,-c(7:8,10:11)] #medial lateral
 ```
 
 
@@ -164,14 +165,14 @@ Mgen_maleNP_sumdata <- mutate(Mgen_maleNP_sumdata, mblobe_relKC = mblobe/kcs) # 
 
 ```{r saveprop, echo=FALSE}
 #Save Prop Data
-write.csv(Mgen_maleNP_sumdata, "Data/Mgenalis_MNP_proportiondata.csv")
+write.csv(Mgen_maleNP_sumdata, "../../Data/Mgenalis_MNP_proportiondata.csv")
 ```
 
 
 \subsection{Make New Table: just the proportion data}
 ```{r mk_propdata}
 #make a new table with only the factors whole brain and kc proportion data
-propdata <- Mgen_maleNP_sumdata[,-c(6:11,13,15)] #remove summed but not relative data, keep whole brain
+propdata <- Mgen_maleNP_sumdata[,-c(6:7,9,11)] #remove summed but not relative data, keep whole brain
 ```
 
 
@@ -262,12 +263,6 @@ sprintf("%.10f", tt_kcsraw$p.value)
 
 
 ```{r bp_kcsraw, echo=FALSE}
-outlier_test_kcsraw <- samples_propdata %>% tibble::rownames_to_column(var="outlier") %>% group_by(tx) %>% mutate(is_outlier=ifelse(is_outlier(kcs), kcs, as.numeric(NA)))
-
-outlier_test_kcsraw$outlier[which(is.na(outlier_test_kcsraw$is_outlier))] <- as.numeric(NA)
-
-
-
 
 #Boxplot
 ggplot(propdata, aes(x=tx, y=kcs, fill=tx)) +
@@ -901,10 +896,10 @@ aged_mean <- c(tt_calyces$estimate[2], tt_mblobe$estimate[2], tt_kcs$estimate[2]
                tt_neuropil$estimate[2], tt_nk$estimate[2])
   
 CI_lower <- c(tt_calyces$conf.int[1], tt_mblobe$conf.int[1], tt_kcs$conf.int[1],
-              tt_neuropil$estimate[1],tt_nk$conf.int[1])
+              tt_neuropil$conf.in[1],tt_nk$conf.int[1])
   
 CI_upper <- c(tt_calyces$conf.int[2], tt_mblobe$conf.int[2], tt_kcs$conf.int[2],
-              tt_neuropil$estimate[2],tt_nk$conf.int[2])
+              tt_neuropil$conf.in[2],tt_nk$conf.int[2])
 
 p_value <-c(tt_calyces$p.value, tt_mblobe$p.value, tt_kcs$p.value, 
             tt_neuropil$p.value, tt_nk$p.value)
