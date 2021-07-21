@@ -6,6 +6,7 @@ output:
   pdf_document:
     toc: true
     toc_depth: 2
+##Updated on 07/15/2021 to include effect size calculations
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -29,6 +30,7 @@ library(stats)
 library(nortest)
 library(MASS)
 library(here)
+library(effsize)
 
 installed.packages()[names(sessionInfo()$otherPkgs), "Version"]
 ```
@@ -398,6 +400,7 @@ sprintf("%.10f", tt_calyces$p.value)
 #calculate % increase
 cal_PI <- (p.inc(tt_calyces$estimate[[2]], tt_calyces$estimate[[1]]))
 cal_PI
+
 ```
 
 Calyx mean volume of AGED males (`r tt_calyces$estimate[[2]]`) is `r round(cal_PI,2)`% greater than NE males (`r tt_calyces$estimate[[1]]`).
@@ -457,6 +460,12 @@ sprintf("%.10f", box_ttest_calyces$p.value)
 
 cal_bc_PI <- (p.inc(box_ttest_calyces$estimate[[2]], box_ttest_calyces$estimate[[1]]))
 cal_bc_PI
+
+
+#Calculate Hedges G effect Size
+##verified same values when using raw and transformed. For ease, using raw.
+
+cohen.d(KE_NPdata[KE_NPdata$treatment == "AGED", "calyces_relWB"], KE_NPdata[KE_NPdata$treatment == "NE", "calyces_relWB"], hedges.correlation=TRUE)
 ```
 
 Calyx mean volume of AGED males (`r box_ttest_calyces$estimate[[2]]`) is `r round(cal_bc_PI,2)`% greater than NE males (`r box_ttest_calyces$estimate[[1]]`).
@@ -527,6 +536,7 @@ print(tt_kcs)
 tt_kcs$statistic
 sprintf("%.10f", tt_kcs$p.value)
 
+
 ```
 
 
@@ -581,6 +591,11 @@ print(box_ttest_kcs)
 box_ttest_kcs$statistic
 sprintf("%.10f", box_ttest_kcs$p.value)
 
+
+#Calculate Hedges G effect Size
+##set up as treatment first (aged == sham) and then control (newly-eclosed) second.
+##Hedge's g applied as hedges.correlation=TRUE for unequal sample size
+cohen.d(KE_NPdata[KE_NPdata$treatment == "AGED", "kcs_relWB"], KE_NPdata[KE_NPdata$treatment == "NE", "kcs_relWB"], hedges.correlation=TRUE)
 ```
 
 
@@ -654,6 +669,12 @@ print(tt_mblobe)
 
 tt_mblobe$statistic
 sprintf("%.10f", tt_mblobe$p.value)
+
+
+#Calculate Hedges G effect Size
+##set up as treatment first (aged == sham) and then control (newly-eclosed) second.
+##Hedge's g applied as hedges.correlation=TRUE for unequal sample size
+cohen.d(KE_NPdata[KE_NPdata$treatment == "AGED", "mblobe_relWB"], KE_NPdata[KE_NPdata$treatment == "NE", "mblobe_relWB"], hedges.correlation=TRUE)
 ```
 
 
@@ -727,6 +748,11 @@ sprintf("%.10f", tt_neuropil$p.value)
 #% increase
 neuropil_PI <- (p.inc(tt_neuropil$estimate[[2]], tt_neuropil$estimate[[1]]))
 neuropil_PI
+
+#Calculate Hedges G effect Size
+##set up as treatment first (aged == sham) and then control (newly-eclosed) second.
+##Hedge's g applied as hedges.correlation=TRUE for unequal sample size
+cohen.d(KE_NPdata[KE_NPdata$treatment == "AGED", "neuropil_relWB"], KE_NPdata[KE_NPdata$treatment == "NE", "neuropil_relWB"], hedges.correlation=TRUE)
 ```
 
 Neuropil mean volume of AGED males (`r tt_neuropil$estimate[[2]]`) is `r round(neuropil_PI,2)`% greater than NE males (`r tt_neuropil$estimate[[1]]`).
@@ -802,6 +828,12 @@ sprintf("%.10f", tt_nk$p.value)
 #% increase
 nk_PI <- (p.inc(tt_nk$estimate[[2]], tt_nk$estimate[[1]]))
 nk_PI
+
+
+#Calculate Hedges G effect Size
+##set up as treatment first (aged == sham) and then control (newly-eclosed) second.
+##Hedge's g applied as hedges.correlation=TRUE for unequal sample size
+cohen.d(KE_NPdata[KE_NPdata$treatment == "AGED", "nk"], KE_NPdata[KE_NPdata$treatment == "NE", "nk"], hedges.correlation=TRUE)
 ```
 
 NK mean of AGED males (`r tt_nk$estimate[[2]]`) is `r round(nk_PI,2)`% greater than NE males (`r tt_nk$estimate[[1]]`).
@@ -881,6 +913,12 @@ sprintf("%.10f", tt_calyces_byKC$p.value)
 #% increase
 calyces_byKC_PI <- (p.inc(tt_calyces_byKC$estimate[[2]], tt_calyces_byKC$estimate[[1]]))
 calyces_byKC_PI
+
+
+#Calculate Hedges G effect Size
+##set up as treatment first (aged == sham) and then control (newly-eclosed) second.
+##Hedge's g applied as hedges.correlation=TRUE for unequal sample size
+cohen.d(KE_NPdata[KE_NPdata$treatment == "AGED", "calyces_relKC"], KE_NPdata[KE_NPdata$treatment == "NE", "calyces_relKC"], hedges.correlation=TRUE)
 ```
 
 Calyces:KC mean volume of AGED males (`r tt_calyces_byKC$estimate[[2]]`) is `r round(calyces_byKC_PI,2)`% greater than NE males (`r tt_calyces_byKC$estimate[[1]]`).
@@ -957,6 +995,12 @@ sprintf("%.10f", tt_mblobe_byKC$p.value)
 #% increase
 mblobe_byKC_PI <- (p.inc(tt_mblobe_byKC$estimate[[2]], tt_mblobe_byKC$estimate[[1]]))
 mblobe_byKC_PI
+
+
+#Calculate Hedges G effect Size
+##set up as treatment first (aged == sham) and then control (newly-eclosed) second.
+##Hedge's g applied as hedges.correlation=TRUE for unequal sample size
+cohen.d(KE_NPdata[KE_NPdata$treatment == "AGED", "mblobe_relKC"], KE_NPdata[KE_NPdata$treatment == "NE", "mblobe_relKC"], hedges.correlation=TRUE)
 ```
 
 MB Lobe:KC mean volume of AGED males (`r tt_mblobe_byKC$estimate[[2]]`) is `r round(mblobe_byKC_PI,2)`% greater than NE males (`r tt_mblobe_byKC$estimate[[1]]`).

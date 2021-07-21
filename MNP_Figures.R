@@ -1,7 +1,7 @@
 ##Figures for Male Neuroplasticity study: M.genalis and B.impatiens
 ##MA Hagadorn
-##Last Modified 3/5/2021
-##Most recent iteration: adjusting file paths 
+##Last Modified 5/17/2021
+##Most recent iteration: splitting to two seperate figures--structures and nk
 
 #loadlibraries
 library(ggplot2)
@@ -16,8 +16,8 @@ getwd()
 
 #M.GENALIS
 #loading in the proportion data (relative to whole brain)
-mgendata <- read.table("Data/Mgenalis_MNP_proportiondata.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
-mgendata <- mgendata [,c(2:3,17:23)]
+mgendata <- read.table("Data/PipelineGenerated/Mgenalis_MNP_proportiondata.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+mgendata <- mgendata [,c(2:3,13:17)]
 #changing to make consistent with bimp data labels
 txgrouping <- mgendata$tx 
 txgrouping <- gsub("ne", "NE", txgrouping)
@@ -31,8 +31,8 @@ mgendata <- mgendata[,-c(3)]
 
 #Bimp
 #loading in the proportion data (relative to whole brain)
-bimpdata <- read.table("Data/Bimp_MNP_proportiondata.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
-bimpdata <- bimpdata [,c(2:3,15:21)]
+bimpdata <- read.table("Data/PipelineGenerated/Bimp_MNP_proportiondata.csv", header = TRUE, sep = ",", stringsAsFactors = FALSE)
+bimpdata <- bimpdata [,c(2:3,15:19)]
 
 
 
@@ -64,13 +64,13 @@ BImelted$tx <- factor(BImelted$tx, levels=c("NE", "AGED"))
 
 
 
-generalsize <- 13
+generalsize <- 11
 legendsize <- 9
 wordsize <-10
 starsize <- 6
 lettersize <- 3
 dotsize <- 2.3
-speciessize <-3.8
+speciessize <-3.7
 seed <- 2012
 
 
@@ -86,8 +86,8 @@ MG_struct <- ggplot(MGmelted, aes(x=variable, y=value, fill=factor(tx))) +
   scale_color_manual(values=c("NE"="darkolivegreen3", "AGED"="darkviolet"), labels=Label, name="Megalopta") +
   scale_y_continuous(name = "Volume Relative to Whole Brain", limits = c(0.02,.18), breaks=seq(0.03,.18, .05), expand = c(0,0)) +
   scale_x_discrete(name = "", labels = c("MB\nLobes", "Calyces\n", "MB\nNeuropil", "Kenyon\nCells"), expand = c(0, 0)) +
-  annotate(geom="text", x=2, y=.115, color="black", size = starsize, label="*", hjust=.5) + #significance CALYCES
-  annotate(geom="text", x=3, y=.165, color="black", size = starsize, label="*", hjust=.5) + #significance TOTAL NEUROPIL 
+  annotate(geom="text", x=2, y=.112, color="black", size = starsize, label="*", hjust=.5) + #significance CALYCES
+  annotate(geom="text", x=3, y=.160, color="black", size = starsize, label="*", hjust=.5) + #significance TOTAL NEUROPIL 
   theme(text = element_text(color="black", size = generalsize, family="sans"),
         axis.title = element_text(color="black", size=10, face="bold"), 
         axis.text.x = element_text(color="black", size = wordsize, margin = margin(l=0, r=0, t=2, b=-10)), 
@@ -96,7 +96,7 @@ MG_struct <- ggplot(MGmelted, aes(x=variable, y=value, fill=factor(tx))) +
         axis.ticks = element_line(color="black", size = 0.3),
         panel.spacing = unit(0, "mm"),
         legend.title = element_text(size = legendsize, face = "italic"),
-        legend.position = c(.1,.86),
+        legend.position = c(.105,.858),
         legend.margin = margin(l=2, r=2, t=2, b=2),
         legend.spacing.y = unit(0.85, "pt"),
         legend.spacing.x = unit(1, "pt"),
@@ -120,12 +120,12 @@ BI_struct <- ggplot(BImelted, aes(x=variable, y=value, fill=factor(tx))) +
   scale_fill_manual(values = c("white", "gray45"), labels=Label, name="Bombus") +
   geom_point(aes(color = factor(tx)), pch=16, position=position_jitterdodge(jitter.width=.35, seed=seed), alpha=.75, size=dotsize) +
   geom_point(aes(fill=factor(tx)), color="black", shape=1, position=position_jitterdodge(jitter.width=.35, seed=seed), size=dotsize+.01, stroke=.3) +
-  ggtitle("c)") +
+  ggtitle("b)") +
   scale_color_manual(values=c("NE"="darkorange", "AGED"="mediumblue"), labels=Label, name="Bombus") +
   scale_y_continuous(name = "Volume Relative to Whole Brain", limits = c(0.02,.18), breaks=seq(0.03,.18, .05), expand = c(0,0)) +
   scale_x_discrete(name = "", labels = c("MB\nLobes", "Calyces\n", "MB\nNeuropil", "Kenyon\nCells"), expand = c(0, 0)) +
-  annotate(geom="text", x=2, y=.105, color="black", size = starsize, label="**", hjust=.5) + #significance
-  annotate(geom="text", x=3, y=.15, color="black", size = starsize, label="*", hjust=.5) + #significance TOTAL NEUROPIL p 0.0014
+  annotate(geom="text", x=2, y=.10, color="black", size = starsize, label="**", hjust=.5) + #significance
+  annotate(geom="text", x=3, y=.145, color="black", size = starsize, label="*", hjust=.5) + #significance TOTAL NEUROPIL p 0.0014
   theme(text = element_text(color="black", size = generalsize, family="sans"),
         axis.title = element_text(color="black", size=10, face="bold"), 
         axis.text.x = element_text(color="black", size = wordsize, margin = margin(l=0, r=0, t=2, b=-10)), 
@@ -134,7 +134,7 @@ BI_struct <- ggplot(BImelted, aes(x=variable, y=value, fill=factor(tx))) +
         axis.ticks = element_line(color="black", size = 0.3),
         panel.spacing = unit(0, "mm"),
         legend.title = element_text(size = legendsize, face = "italic"),
-        legend.position = c(.1,.86),
+        legend.position = c(.1,.858),
         legend.margin = margin(l=2, r=2, t=2, b=2),
         legend.spacing.y = unit(0.85, "pt"),
         legend.spacing.x = unit(1, "pt"),
@@ -153,9 +153,29 @@ BI_struct <- ggplot(BImelted, aes(x=variable, y=value, fill=factor(tx))) +
         plot.title = element_text(size = generalsize, margin = margin(t = 6, r = 0, b = 0, l = 0), face="bold", vjust = 3, hjust = 0))
 
 
-a_plot <- plot_grid(MG_struct, BI_struct, ncol = 1, align='v', rel_heights = c(.5,.5))
+a_plot <- plot_grid(MG_struct, NULL, BI_struct, ncol = 1, align='v', rel_heights = c(.5,.015, .5))
 
+ggsave("Figure2.tiff",
+       plot = a_plot,
+       device = "tiff",
+       path ="Figures/",
+       scale = 1,
+       width = 4,
+       height = 6,
+       units = "in",
+       dpi = 1000,
+       limitsize = TRUE)
 
+ggsave("Figure2.pdf",
+       plot = a_plot,
+       device = "pdf",
+       path = "Figures/",
+       scale = 1,
+       width = 4,
+       height = 6,
+       units = "in",
+       dpi = 1000,
+       limitsize = TRUE)
 
 
 
@@ -189,11 +209,12 @@ MG_nk <- ggplot(MG_nk_melt, aes(x=tx, y=value, fill=factor(tx))) +
   scale_fill_manual(values = c("white", "gray45"), labels=c("Newly-emerged", "Aged")) +
   geom_point(aes(color = factor(tx)), pch=16, position=position_jitterdodge(jitter.width=.35, seed=seed), alpha=.75, size=dotsize) +
   geom_point(aes(fill=factor(tx)), color="black", shape=1, position=position_jitterdodge(jitter.width=.35, seed=seed), size=dotsize+.01, stroke=.3) +
-  ggtitle("b)") +
+  ggtitle("a)") +
   scale_color_manual(values=c("NE"="darkolivegreen3", "AGED"="darkviolet"), labels=c("Newly-emerged", "Aged")) +
   scale_y_continuous(name = "Neuropil to Kenyon cell ratio", limits = c(1.3,3.0), breaks=seq(1.4,3.0,.4), expand = c(0,0)) +
   scale_x_discrete(name = "", labels = c("NE\n", "Mature\n")) +
-  annotate(geom="text", x=1.5, y=2.75, color="black", size = starsize, label="**", hjust=.5) + #significance
+  annotate(geom="text", x=1.5, y=2.65, color="black", size = starsize, label="**", hjust=.5) + #significance
+  annotate(geom="text", x=.5, y=2.965, color="black", size = speciessize, fontface='italic', label ="Megalopta", hjust=0) +
   theme(text = element_text(color="black", size = generalsize, family="sans"),
         axis.title = element_text(color="black", size=10, face="bold"), 
         axis.text.x = element_text(color="black", size = wordsize, margin = margin(l=0, r=0, t=2, b=-10)), 
@@ -216,11 +237,12 @@ BI_nk <- ggplot(BI_nk_melt, aes(x=tx, y=value, fill=factor(tx))) +
   scale_fill_manual(values = c("white", "gray45"), labels=c("Newly-emerged", "Aged")) +
   geom_point(aes(color = factor(tx)), pch=16, position=position_jitterdodge(jitter.width=.35, seed=seed), alpha=.75, size=dotsize) +
   geom_point(aes(fill=factor(tx)), color="black", shape=1, position=position_jitterdodge(jitter.width=.35, seed=seed), size=dotsize+.01, stroke=.3) +
-  ggtitle("d)") +
+  ggtitle("b)") +
   scale_color_manual(values=c("NE"="darkorange", "AGED"="mediumblue"), labels=c("Newly-emerged", "Aged")) +
   scale_y_continuous(name = "Neuropil to Kenyon cell ratio", limits = c(1.3,3.0), breaks=seq(1.4,3.0,.4), expand = c(0,0)) +
   scale_x_discrete(name = "", labels = c("NE\n", "Mature\n")) +
-  annotate(geom="text", x=1.5, y=2.9, color="black", size = starsize, label="**", hjust=.5) + #significance
+  annotate(geom="text", x=1.5, y=2.835, color="black", size = starsize, label="**", hjust=.5) + #significance
+  annotate(geom="text", x=.5, y=2.965, color="black", size = speciessize, fontface='italic', label ="Bombus", hjust=0) +
   theme(text = element_text(color="black", size = generalsize, family="sans"),
         axis.title = element_text(color="black", size=10, face="bold"), 
         axis.text.x = element_text(color="black", size = wordsize, margin = margin(l=0, r=0, t=2, b=-10)), 
@@ -237,30 +259,29 @@ BI_nk <- ggplot(BI_nk_melt, aes(x=tx, y=value, fill=factor(tx))) +
         plot.margin= grid::unit(c(0, 0, 0, 0), "in"),
         plot.title = element_text(size = generalsize, margin = margin(t = 6, r = 0, b = 0, l = 0), face="bold", vjust = 3, hjust = 0))
 
-b_plot <- plot_grid(MG_nk, BI_nk, ncol = 1, align='v', rel_heights = c(.5,.5))
-
-multipanel_plot <- plot_grid(a_plot, NULL, b_plot, rel_widths = c(.825,.08,.285), nrow = 1)
+b_plot <- plot_grid(MG_nk, NULL, BI_nk, nrow = 1, align='h', rel_widths = c(.5,.05,.5))
 
 
-ggsave("Figure2.tiff",
-       plot = multipanel_plot ,
+ggsave("Figure3.tiff",
+       plot = b_plot,
        device = "tiff",
        path ="Figures/",
        scale = 1,
-       width = 6,
-       height = 6,
+       width = 4,
+       height = 3,
        units = "in",
-       dpi = 600,
+       dpi = 1000,
        limitsize = TRUE)
 
-ggsave("Figure2.pdf",
-       plot = multipanel_plot ,
+ggsave("Figure3.pdf",
+       plot = b_plot,
        device = "pdf",
        path = "Figures/",
        scale = 1,
-       width = 6,
-       height = 6,
+       width = 4,
+       height = 3,
        units = "in",
-       dpi = 300,
+       dpi = 1000,
        limitsize = TRUE)
+
 
